@@ -21,12 +21,15 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 import config
-from clock   import SimClock
-from park    import Park
-from visitor import Visitor
-from staff   import Staff
-from events  import EventManager
-from logger  import log
+from clock      import SimClock
+from park       import Park
+from visitor    import Visitor
+from staff      import Staff
+from events     import EventManager
+from logger     import log
+from strategies import ThrillSeekerStrategy, FamilyStrategy, EfficientRouteStrategy
+
+_STRATEGY_CYCLE = [ThrillSeekerStrategy, FamilyStrategy, EfficientRouteStrategy]
 
 
 def parse_args():
@@ -80,14 +83,18 @@ def main():
     for i, attraction in enumerate(park.attractions):
         Staff(i, attraction, clock).start()
 
-    # ── 4. Event manager ──────────────────────────────────────────────
-    EventManager(park, clock).start()
+    # ── 4. Event manager — subscribe every attraction before starting ─
+    em = EventManager(park, clock)
+    for attraction in park.attractions:
+        em.subscribe("breakdown", attraction.on_event)
+    em.start()
 
     # ── 5. Visitor threads with staggered arrivals ────────────────────
     visitors = []
     for i in range(args.visitors):
-        delay = random.uniform(0, config.ARRIVAL_WINDOW_MIN)
-        v = Visitor(i, park, clock, delay_minutes=delay)
+        delay    = random.uniform(0, config.ARRIVAL_WINDOW_MIN)
+        strategy = _STRATEGY_CYCLE[i % len(_STRATEGY_CYCLE)]()
+        v = Visitor(i, park, clock, delay_minutes=delay, strategy=strategy)
         visitors.append(v)
         park.visitor_entered()
 

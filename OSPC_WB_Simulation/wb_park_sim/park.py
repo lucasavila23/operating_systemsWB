@@ -14,6 +14,7 @@ import threading
 import random
 
 from attraction import Attraction
+from fastpass   import FastPassAttraction
 from restaurant import Restaurant
 from restroom   import Restroom
 from logger     import log
@@ -47,9 +48,9 @@ class Park:
     def _build_attractions(self):
         c = self.clock
         return [
-            # Thrill rides
-            Attraction("Batman La Fuga",           "thrill",  4,  5, c, thrill_level=5),
-            Attraction("Superman: La Atracción",   "thrill",  6,  4, c, thrill_level=4),
+            # Thrill rides — Batman and Superman have FastPass lanes
+            FastPassAttraction(Attraction("Batman La Fuga",         "thrill",  4,  5, c, thrill_level=5)),
+            FastPassAttraction(Attraction("Superman: La Atracción", "thrill",  6,  4, c, thrill_level=4)),
             Attraction("Stunt Falls",              "thrill",  8,  6, c, thrill_level=4),
             # Family rides
             Attraction("Tom y Jerry: La Fuga",     "family", 12,  4, c, thrill_level=2),

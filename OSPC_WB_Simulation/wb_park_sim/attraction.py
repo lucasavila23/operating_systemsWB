@@ -187,6 +187,11 @@ class Attraction:
     # ----------------------------------------------------------
     # Event / Staff Interface
     # ----------------------------------------------------------
+    def on_event(self, event_type: str, data: dict):
+        """Observer callback — called by EventManager._notify()."""
+        if event_type == "breakdown" and data.get("attraction") is self:
+            self.trigger_breakdown(data["duration"])
+
     def trigger_breakdown(self, duration_minutes: int):
         """
         Called by EventManager. Sets operational=False, then schedules
