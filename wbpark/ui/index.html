@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WB Park Madrid — Live Dashboard</title>
+<style>
+:root {
+  --bg:        #08080f;
+  --bg-card:   #111128;
+  --bg-panel:  #0b0b1c;
+  --bg-top:    #0e0e26;
+  --border:    #232348;
+  --border-hi: #363680;
+  --text:      #c0c0dc;
+  --muted:     #44446a;
+  --dim:       #1c1c38;
+
+  --thrill: #cc2233;
+  --family: #2255cc;
+  --show:   #8822cc;
+  --kids:   #22aa44;
+
+  --q-low: #22bb44;
+  --q-mid: #ffaa22;
+  --q-hi:  #ee3333;
+
+  --vs-arriving:  #33aaff;
+  --vs-exploring: #5555aa;
+  --vs-queueing:  #ff9900;
+  --vs-riding:    #ff5511;
+  --vs-eating:    #22bb66;
+  --vs-restroom:  #5588ff;
+  --vs-resting:   #9955cc;
+  --vs-exiting:   #444466;
+
+  --log-breakdown: #ff5555;
+  --log-weather:   #778899;
+  --log-vip:       #ffcc33;
+  --log-flash:     #33ccff;
+  --log-show:      #bb55ff;
+  --log-visitor:   #33ddaa;
+  --log-park:      #ccccdd;
+  --log-default:   #ffcc44;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Left column ─────────────────────────────────── */
+#left-col {
+  width: 65%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+
+/* ── Top bar ──────────────────────────────────────── */
+#topbar {
+  background: var(--bg-top);
+  border-bottom: 1px solid var(--border-hi);
+  padding: 10px 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#topbar-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5555bb;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+#clock {
+  font-family: 'Courier New', monospace;
+  font-size: 30px;
+  font-weight: 700;
+  color: #44ccff;
+  letter-spacing: 3px;
+  min-width: 74px;
+}
+
+#visitor-state-section {
+  flex: 1;
+  min-width: 0;
+}
+
+#visitor-state-bar {
+  display: flex;
+  height: 18px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--dim);
+  margin-bottom: 5px;
+}
+
+.vs-seg {
+  height: 100%;
+  transition: width 0.5s ease;
+  min-width: 0;
+}
+
+#visitor-state-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+
+.vs-pill {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.vs-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.vs-pill-count {
+  font-family: 'Courier New', monospace;
+  color: var(--text);
+}
+
+#rides-block {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.rides-label {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+}
+
+#total-rides {
+  font-family: 'Courier New', monospace;
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffdd44;
+  display: block;
+  line-height: 1;
+}
+
+/* ── Attractions area ─────────────────────────────── */
+#attractions-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.type-group {
+  margin-bottom: 14px;
+}
+
+.type-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.type-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.attr-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Attraction card ──────────────────────────────── */
+.attr-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px 12px;
+  width: 182px;
+  transition: background 0.5s, border-color 0.5s;
+  position: relative;
+}
+
+.attr-card.broken {
+  background: #140808;
+  border-color: #4a1a1a;
+}
+
+@keyframes cardShake {
+  0%,100% { transform: translateX(0); }
+  15%      { transform: translateX(-5px); }
+  30%      { transform: translateX(5px); }
+  45%      { transform: translateX(-4px); }
+  60%      { transform: translateX(4px); }
+  80%      { transform: translateX(-2px); }
+  90%      { transform: translateX(2px); }
+}
+
+@keyframes cardFlash {
+  0%   { background: #140808; }
+  30%  { background: #3d1010; }
+  100% { background: #140808; }
+}
+
+.attr-card.shake {
+  animation: cardShake 0.5s ease, cardFlash 0.7s ease;
+}
+
+.attr-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 5px;
+}
+
+.attr-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9999ee;
+  line-height: 1.3;
+  flex: 1;
+  min-width: 0;
+}
+
+.type-badge {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.type-badge.thrill { background: #330a0a; color: var(--thrill); border: 1px solid #601515; }
+.type-badge.family { background: #08102e; color: var(--family); border: 1px solid #153080; }
+.type-badge.show   { background: #160828; color: var(--show);   border: 1px solid #4a1580; }
+.type-badge.kids   { background: #081c0e; color: var(--kids);   border: 1px solid #156030; }
+
+.queue-row {
+  margin-bottom: 6px;
+}
+
+.queue-row-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.queue-track {
+  background: var(--dim);
+  border-radius: 3px;
+  height: 14px;
+  overflow: hidden;
+}
+
+.queue-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease, background 0.4s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  min-width: 28px;
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.9);
+}
+
+.queue-fill.q-low { background: var(--q-low); }
+.queue-fill.q-mid { background: var(--q-mid); }
+.queue-fill.q-hi  { background: var(--q-hi); }
+.queue-fill.q-fp  { background: #7722bb; }
+
+.attr-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.stat-riders-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.stat-riders-num {
+  font-family: 'Courier New', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #88aaff;
+  line-height: 1;
+}
+
+.stat-riders-lbl {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.stat-breakdowns {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ff5555;
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+.s-open   { background: #082008; color: #44ee44; border: 1px solid #185518; }
+.s-broken { background: #280808; color: #ff4444; border: 1px solid #551818; }
+.s-closed { background: #181828; color: #666688; border: 1px solid #303050; }
+
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+.s-broken { animation: blink 1.2s ease-in-out infinite; }
+
+/* ── Right column ─────────────────────────────────── */
+#right-col {
+  width: 35%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Facilities panel ─────────────────────────────── */
+#facilities-panel {
+  flex: 1;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+  background: var(--bg-panel);
+  min-height: 0;
+}
+
+.section-hdr {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+
+.section-hdr:first-child { margin-top: 0; }
+
+.compact-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 2px;
+  border-bottom: 1px solid var(--dim);
+}
+
+.c-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  width: 72px;
+  flex-shrink: 0;
+  min-height: 10px;
+  align-content: flex-start;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #5555aa;
+}
+
+.dot-overflow {
+  font-size: 9px;
+  color: #8888cc;
+  font-family: 'Courier New', monospace;
+  align-self: center;
+}
+
+.c-served {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 26px;
+  text-align: right;
+}
+
+/* ── Event log ────────────────────────────────────── */
+#log-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  min-height: 0;
+}
+
+#log-hdr {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#log-entries {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 10px;
+}
+
+.log-entry {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 0;
+  border-bottom: 1px solid #0d0d1c;
+  animation: logSlide 0.25s ease;
+}
+
+@keyframes logSlide {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.log-ts  { font-family: 'Courier New', monospace; font-size: 10px; color: var(--muted); flex-shrink: 0; white-space: nowrap; }
+.log-msg { flex: 1; word-break: break-word; }
+
+.log-breakdown { color: var(--log-breakdown); }
+.log-weather   { color: var(--log-weather); }
+.log-vip       { color: var(--log-vip); }
+.log-flash     { color: var(--log-flash); }
+.log-show      { color: var(--log-show); }
+.log-visitor   { color: var(--log-visitor); }
+.log-park      { color: var(--log-park); }
+.log-default   { color: var(--log-default); }
+
+/* ── End-of-day overlay ───────────────────────────── */
+#eod-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(8,8,15,0.85);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 100;
+  padding: 40px 20px;
+  backdrop-filter: blur(3px);
+}
+
+#eod-panel {
+  background: #0e0e26;
+  border: 1px solid var(--border-hi);
+  border-radius: 10px;
+  padding: 24px 28px;
+  width: 460px;
+  max-width: 90vw;
+}
+
+#eod-panel h2 {
+  font-size: 16px;
+  color: #44ccff;
+  text-align: center;
+  margin-bottom: 20px;
+  letter-spacing: 1px;
+}
+
+#eod-panel h3 {
+  font-size: 9px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  margin-top: 18px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.eod-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.eod-rank-n    { font-family: 'Courier New', monospace; font-size: 11px; color: var(--muted); width: 18px; flex-shrink: 0; }
+.eod-rank-name { font-size: 12px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eod-bar-wrap  { width: 100px; background: var(--dim); border-radius: 3px; height: 10px; overflow: hidden; flex-shrink: 0; }
+.eod-bar-fill  { height: 100%; background: #4455cc; border-radius: 3px; }
+.eod-rank-cnt  { font-family: 'Courier New', monospace; font-size: 12px; color: #88aaff; width: 32px; text-align: right; flex-shrink: 0; }
+
+.eod-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.eod-stat {
+  background: var(--dim);
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+}
+
+.eod-stat-n   { font-family: 'Courier New', monospace; font-size: 24px; font-weight: 700; color: #ffdd44; display: block; }
+.eod-stat-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div id="main">
+
+  <!-- ── Left column ──────────────────────────────── -->
+  <div id="left-col">
+
+    <div id="topbar">
+      <div id="topbar-title">🎢 WB PARK MADRID</div>
+      <div id="clock">10:00</div>
+      <div id="visitor-state-section">
+        <div id="visitor-state-bar">
+          <div class="vs-seg" id="vs-arriving"  style="background:var(--vs-arriving)"></div>
+          <div class="vs-seg" id="vs-exploring" style="background:var(--vs-exploring)"></div>
+          <div class="vs-seg" id="vs-queueing"  style="background:var(--vs-queueing)"></div>
+          <div class="vs-seg" id="vs-riding"    style="background:var(--vs-riding)"></div>
+          <div class="vs-seg" id="vs-eating"    style="background:var(--vs-eating)"></div>
+          <div class="vs-seg" id="vs-restroom"  style="background:var(--vs-restroom)"></div>
+          <div class="vs-seg" id="vs-resting"   style="background:var(--vs-resting)"></div>
+          <div class="vs-seg" id="vs-exiting"   style="background:var(--vs-exiting)"></div>
+        </div>
+        <div id="visitor-state-labels"></div>
+      </div>
+      <div id="rides-block">
+        <span class="rides-label">RIDES TODAY</span>
+        <span id="total-rides">0</span>
+      </div>
+    </div>
+
+    <div id="attractions-area">
+      <div class="type-group">
+        <div class="type-label" style="color:var(--thrill)">THRILL</div>
+        <div class="attr-grid" id="grid-thrill"></div>
+      </div>
+      <div class="type-group">
+        <div class="type-label" style="color:var(--family)">FAMILY</div>
+        <div class="attr-grid" id="grid-family"></div>
+      </div>
+      <div class="type-group">
+        <div class="type-label" style="color:var(--show)">SHOW</div>
+        <div class="attr-grid" id="grid-show"></div>
+      </div>
+      <div class="type-group">
+        <div class="type-label" style="color:var(--kids)">KIDS</div>
+        <div class="attr-grid" id="grid-kids"></div>
+      </div>
+    </div>
+
+  </div><!-- /left-col -->
+
+  <!-- ── Right column ─────────────────────────────── -->
+  <div id="right-col">
+
+    <div id="facilities-panel">
+      <div class="section-hdr">RESTAURANTS</div>
+      <div id="restaurants-list"></div>
+      <div class="section-hdr">RESTROOMS</div>
+      <div id="restrooms-list"></div>
+    </div>
+
+    <div id="log-panel">
+      <div id="log-hdr">EVENT LOG</div>
+      <div id="log-entries"></div>
+    </div>
+
+  </div><!-- /right-col -->
+
+</div><!-- /main -->
+
+<!-- End-of-day overlay -->
+<div id="eod-overlay">
+  <div id="eod-panel">
+    <h2>🌙 PARK CLOSED — END OF DAY</h2>
+    <h3>Top Attractions by Riders</h3>
+    <div id="eod-rankings"></div>
+    <div class="eod-stats-grid">
+      <div class="eod-stat">
+        <span class="eod-stat-n" id="eod-bd">0</span>
+        <span class="eod-stat-lbl">Breakdowns</span>
+      </div>
+      <div class="eod-stat">
+        <span class="eod-stat-n" id="eod-meals">0</span>
+        <span class="eod-stat-lbl">Meals Served</span>
+      </div>
+      <div class="eod-stat">
+        <span class="eod-stat-n" id="eod-rides">0</span>
+        <span class="eod-stat-lbl">Total Rides</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+// ────────────────────────────────────────────────────────
+//  Static metadata mirroring park.py (no Python changes)
+// ────────────────────────────────────────────────────────
+const ATTR_META = [
+  { name: "Batman La Fuga",         type: "thrill", fp: true  },
+  { name: "Superman: La Atracción", type: "thrill", fp: true  },
+  { name: "Stunt Falls",            type: "thrill", fp: false },
+  { name: "Tom y Jerry: La Fuga",   type: "family", fp: false },
+  { name: "Scooby-Doo Mansion",     type: "family", fp: false },
+  { name: "Aqua Mania",             type: "family", fp: false },
+  { name: "Superman Stunt Show",    type: "show",   fp: false },
+  { name: "Looney Tunes Live Show", type: "show",   fp: false },
+  { name: "Looney Tunes Carousel",  type: "kids",   fp: false },
+  { name: "Bugs Bunny World",       type: "kids",   fp: false },
+];
+
+const RESTAURANTS = [
+  "Gotham City Kitchen",
+  "Looney Tunes Snack Bar",
+  "Krypton Burgers",
+  "Hogwarts Café",
+  "WB Ice Cream Stand",
+];
+
+const RESTROOMS = [
+  "Main Entrance WC",
+  "Gotham Area WC",
+  "Looney Tunes Area WC",
+  "Superman Plaza WC",
+];
+
+const VS_DEFS = [
+  { key: "arriving",  label: "ARRIVING",  color: "var(--vs-arriving)"  },
+  { key: "exploring", label: "EXPLORING", color: "var(--vs-exploring)" },
+  { key: "queueing",  label: "QUEUEING",  color: "var(--vs-queueing)"  },
+  { key: "riding",    label: "RIDING",    color: "var(--vs-riding)"    },
+  { key: "eating",    label: "EATING",    color: "var(--vs-eating)"    },
+  { key: "restroom",  label: "RESTROOM",  color: "var(--vs-restroom)"  },
+  { key: "resting",   label: "RESTING",   color: "var(--vs-resting)"   },
+  { key: "exiting",   label: "EXITING",   color: "var(--vs-exiting)"   },
+];
+
+// ────────────────────────────────────────────────────────
+//  App state
+// ────────────────────────────────────────────────────────
+const S = {
+  attractions:  {},
+  restaurants:  {},
+  visitorStates:{},
+  visitorCount: 0,
+  totalRiders:  0,
+  clock:        '10:00',
+  eodShown:     false,
+};
+
+// ────────────────────────────────────────────────────────
+//  Utilities
+// ────────────────────────────────────────────────────────
+const el = id => document.getElementById(id);
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function safeKey(name) {
+  return 'a_' + name.replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+function restKey(name) {
+  return 'r_' + name.replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+function qClass(n) {
+  if (n >= 20) return 'q-hi';
+  if (n >= 10) return 'q-mid';
+  return 'q-low';
+}
+
+function pct(n, max) {
+  return Math.max(3, Math.min(100, Math.round((n / max) * 100)));
+}
+
+function buildDots(count) {
+  const n = count || 0;
+  if (n <= 0) return '';
+  const show = Math.min(10, n);
+  let h = '';
+  for (let i = 0; i < show; i++) h += '<div class="dot"></div>';
+  if (n > 10) h += `<span class="dot-overflow">+${n-10}</span>`;
+  return h;
+}
+
+// ────────────────────────────────────────────────────────
+//  DOM initialisation
+// ────────────────────────────────────────────────────────
+function initCards() {
+  ATTR_META.forEach(m => {
+    const id   = safeKey(m.name);
+    const grid = el('grid-' + m.type);
+    const card = document.createElement('div');
+    card.id = id;
+    card.className = 'attr-card';
+    card.innerHTML = cardHTML(m);
+    grid.appendChild(card);
+  });
+}
+
+function cardHTML(m) {
+  const id = safeKey(m.name);
+  const fpBar = m.fp ? `
+    <div class="queue-row">
+      <div class="queue-row-header">
+        <span style="color:#8833cc">⚡ FP</span>
+        <span id="${id}_fpn">0</span>
+      </div>
+      <div class="queue-track">
+        <div id="${id}_fpfill" class="queue-fill q-fp" style="width:3%">0</div>
+      </div>
+    </div>` : '';
+
+  return `
+    <div class="attr-header">
+      <div class="attr-name">${esc(m.name)}</div>
+      <span class="type-badge ${m.type}">${m.type.toUpperCase()}</span>
+    </div>
+    <div class="queue-row">
+      <div class="queue-row-header">
+        <span>QUEUE</span>
+        <span id="${id}_qn">0 / 30</span>
+      </div>
+      <div class="queue-track">
+        <div id="${id}_qfill" class="queue-fill q-low" style="width:3%">0</div>
+      </div>
+    </div>
+    ${fpBar}
+    <div class="attr-stats-row">
+      <div class="stat-riders-wrap">
+        <span class="stat-riders-num" id="${id}_riders">0</span>
+        <span class="stat-riders-lbl">riders</span>
+      </div>
+      <span class="stat-breakdowns" id="${id}_bd" style="display:none"></span>
+    </div>
+    <span class="status-badge s-open" id="${id}_status">OPEN</span>`;
+}
+
+function initFacilities() {
+  const rl = el('restaurants-list');
+  RESTAURANTS.forEach(name => {
+    const row = document.createElement('div');
+    row.id = restKey(name);
+    row.className = 'compact-row';
+    row.innerHTML = `
+      <span class="c-name" title="${esc(name)}">${esc(name)}</span>
+      <div class="dot-grid" id="${restKey(name)}_dots"></div>
+      <span class="c-served" id="${restKey(name)}_served">0</span>`;
+    rl.appendChild(row);
+  });
+
+  const wl = el('restrooms-list');
+  RESTROOMS.forEach(name => {
+    const row = document.createElement('div');
+    row.className = 'compact-row';
+    row.innerHTML = `
+      <span class="c-name" title="${esc(name)}">${esc(name)}</span>
+      <div class="dot-grid"></div>
+      <span class="c-served" style="color:var(--muted)">—</span>`;
+    wl.appendChild(row);
+  });
+}
+
+function initVsLabels() {
+  el('visitor-state-labels').innerHTML = VS_DEFS.map(s => `
+    <div class="vs-pill">
+      <div class="vs-pill-dot" style="background:${s.color}"></div>
+      <span style="color:${s.color}">${s.label}</span>
+      <span class="vs-pill-count" id="vs_cnt_${s.key}">0</span>
+    </div>`).join('');
+}
+
+// ────────────────────────────────────────────────────────
+//  Targeted update functions
+// ────────────────────────────────────────────────────────
+function updateAttrCard(a) {
+  const id   = safeKey(a.name);
+  const card = el(id);
+  if (!card) return;
+
+  const broken = !a.is_operational;
+  const q      = a.queue_length || 0;
+  const p      = pct(q, 30);
+
+  const qfill = el(id + '_qfill');
+  if (qfill) {
+    qfill.style.width = p + '%';
+    qfill.textContent = q;
+    qfill.className   = 'queue-fill ' + qClass(q);
+  }
+  const qn = el(id + '_qn');
+  if (qn) qn.textContent = q + ' / 30';
+
+  const rEl = el(id + '_riders');
+  if (rEl) rEl.textContent = a.total_riders || 0;
+
+  const bdEl = el(id + '_bd');
+  if (bdEl) {
+    const bdc = a.total_breakdowns || 0;
+    if (bdc > 0) {
+      bdEl.textContent   = bdc + ' ⚡bd';
+      bdEl.style.display = '';
+    } else {
+      bdEl.style.display = 'none';
+    }
+  }
+
+  const sEl = el(id + '_status');
+  if (sEl) {
+    sEl.className   = 'status-badge ' + (broken ? 's-broken' : 's-open');
+    sEl.textContent = broken ? 'BROKEN' : 'OPEN';
+  }
+
+  card.className = 'attr-card' + (broken ? ' broken' : '');
+}
+
+function triggerBreakdownAnim(name) {
+  const card = el(safeKey(name));
+  if (!card) return;
+  card.classList.remove('shake');
+  void card.offsetWidth;
+  card.classList.add('shake');
+  card.addEventListener('animationend', () => card.classList.remove('shake'), { once: true });
+}
+
+function updateRestRow(r) {
+  const base     = restKey(r.name);
+  const dotsEl   = el(base + '_dots');
+  const servedEl = el(base + '_served');
+  if (dotsEl)   dotsEl.innerHTML     = buildDots(r.waiting_count || 0);
+  if (servedEl) servedEl.textContent = r.total_served || 0;
+}
+
+function updateClock(ts) {
+  if (!ts) return;
+  S.clock = ts;
+  el('clock').textContent = ts;
+  if (!S.eodShown && ts >= '22:00') showEOD();
+}
+
+function updateTotalRiders() {
+  S.totalRiders = Object.values(S.attractions)
+    .reduce((s, a) => s + (a.total_riders || 0), 0);
+  el('total-rides').textContent = S.totalRiders;
+}
+
+function updateVisitorBar() {
+  const counts = {};
+  VS_DEFS.forEach(s => { counts[s.key] = 0; });
+  Object.values(S.visitorStates).forEach(state => {
+    if (counts[state] !== undefined) counts[state]++;
+  });
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+  VS_DEFS.forEach(s => {
+    const w   = total > 0 ? (counts[s.key] / total) * 100 : 0;
+    const seg = el('vs-' + s.key);
+    if (seg) seg.style.width = w + '%';
+    const cnt = el('vs_cnt_' + s.key);
+    if (cnt) cnt.textContent = counts[s.key];
+  });
+}
+
+// ────────────────────────────────────────────────────────
+//  Event log
+// ────────────────────────────────────────────────────────
+function detectLogClass(msg) {
+  const m = msg.toLowerCase();
+  if (m.includes('breakdown') || m.includes('broken') || m.includes('closed for'))
+    return 'log-breakdown';
+  if (m.includes('weather') || m.includes('sunny') || m.includes('rain') || m.includes('cloud'))
+    return 'log-weather';
+  if (m.includes('vip') || m.includes('celebrity') || m.includes('sports star') || m.includes('executive'))
+    return 'log-vip';
+  if (m.includes('flash') || m.includes('deal') || m.includes('% off'))
+    return 'log-flash';
+  if (m.includes('stunt show') || m.includes('main stage') || m.includes("don't miss"))
+    return 'log-show';
+  if (m.includes('back in operation') || m.includes('✅'))
+    return 'log-park';
+  return 'log-default';
+}
+
+function addLog(ts, msg, cls) {
+  const entries = el('log-entries');
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + (cls || detectLogClass(msg));
+  div.innerHTML = `<span class="log-ts">${esc(ts)}</span><span class="log-msg">${esc(msg)}</span>`;
+  entries.insertBefore(div, entries.firstChild);
+  while (entries.children.length > 30) entries.removeChild(entries.lastChild);
+}
+
+// ────────────────────────────────────────────────────────
+//  End-of-day overlay
+// ────────────────────────────────────────────────────────
+function showEOD() {
+  S.eodShown = true;
+
+  const sorted = Object.values(S.attractions)
+    .sort((a, b) => (b.total_riders || 0) - (a.total_riders || 0))
+    .slice(0, 5);
+
+  const peak = sorted.length > 0 ? Math.max(1, sorted[0].total_riders || 1) : 1;
+
+  el('eod-rankings').innerHTML = sorted.map((a, i) => `
+    <div class="eod-rank-row">
+      <span class="eod-rank-n">${i + 1}.</span>
+      <span class="eod-rank-name">${esc(a.name)}</span>
+      <div class="eod-bar-wrap">
+        <div class="eod-bar-fill" style="width:${Math.round(((a.total_riders||0)/peak)*100)}%"></div>
+      </div>
+      <span class="eod-rank-cnt">${a.total_riders || 0}</span>
+    </div>`).join('');
+
+  el('eod-bd').textContent = Object.values(S.attractions)
+    .reduce((s, a) => s + (a.total_breakdowns || 0), 0);
+  el('eod-meals').textContent = Object.values(S.restaurants)
+    .reduce((s, r) => s + (r.total_served || 0), 0);
+  el('eod-rides').textContent = S.totalRiders;
+
+  el('eod-overlay').style.display = 'flex';
+}
+
+// ────────────────────────────────────────────────────────
+//  Boot
+// ────────────────────────────────────────────────────────
+initCards();
+initFacilities();
+initVsLabels();
+
+// ────────────────────────────────────────────────────────
+//  WebSocket
+// ────────────────────────────────────────────────────────
+const socket = io();
+
+socket.on('snapshot', snap => {
+  S.visitorCount = snap.visitor_count || 0;
+
+  (snap.attractions || []).forEach(a => {
+    S.attractions[a.name] = a;
+    updateAttrCard(a);
+    if (a.ts) updateClock(a.ts);
+  });
+  updateTotalRiders();
+
+  (snap.restaurants || []).forEach(r => {
+    S.restaurants[r.name] = r;
+    updateRestRow(r);
+  });
+});
+
+socket.on('attraction_state', ev => {
+  const a = ev.data;
+  S.attractions[a.name] = a;
+  updateAttrCard(a);
+  updateTotalRiders();
+  updateClock(ev.ts);
+});
+
+socket.on('breakdown', ev => {
+  const d = ev.data;
+  updateClock(ev.ts);
+  if (S.attractions[d.name]) {
+    S.attractions[d.name].is_operational = false;
+    updateAttrCard(S.attractions[d.name]);
+  }
+  triggerBreakdownAnim(d.name);
+  addLog(ev.ts || S.clock,
+    `⚠️ ${d.name} BREAKDOWN — closed ≈${d.duration} min`,
+    'log-breakdown');
+});
+
+socket.on('restaurant_state', ev => {
+  const r = ev.data;
+  S.restaurants[r.name] = r;
+  updateRestRow(r);
+  updateClock(ev.ts);
+});
+
+socket.on('visitor_state', ev => {
+  const d = ev.data;
+  S.visitorStates[d.name] = d.state;
+  if (d.visitor_count !== undefined) S.visitorCount = d.visitor_count;
+  updateClock(ev.ts);
+  updateVisitorBar();
+});
+
+socket.on('event_log', ev => {
+  updateClock(ev.ts);
+  addLog(ev.ts || S.clock, ev.data.message);
+});
+</script>
+</body>
+</html>
