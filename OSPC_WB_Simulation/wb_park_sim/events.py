@@ -22,8 +22,21 @@ class EventManager(threading.Thread):
 
     def __init__(self, park, clock):
         super().__init__(daemon=True, name="EventManager")
-        self.park  = park
-        self.clock = clock
+        self.park        = park
+        self.clock       = clock
+        self._subscribers: dict[str, list] = {}
+
+    # ----------------------------------------------------------
+    # Observer interface
+    # ----------------------------------------------------------
+    def subscribe(self, event_type: str, listener):
+        """Register a callable to be notified when event_type fires."""
+        self._subscribers.setdefault(event_type, []).append(listener)
+
+    def _notify(self, event_type: str, data: dict):
+        """Dispatch data to every listener registered for event_type."""
+        for listener in self._subscribers.get(event_type, []):
+            listener(event_type, data)
 
     def run(self):
         # First event after a quiet opening period
@@ -43,9 +56,9 @@ class EventManager(threading.Thread):
         if event == "breakdown":
             candidates = [a for a in self.park.attractions if a.is_operational]
             if candidates:
-                victim    = random.choice(candidates)
-                duration  = random.randint(10, 25)
-                victim.trigger_breakdown(duration)
+                victim   = random.choice(candidates)
+                duration = random.randint(10, 25)
+                self._notify("breakdown", {"attraction": victim, "duration": duration})
 
         elif event == "weather":
             cond = random.choice(["☀️  Sunny spell", "🌧️  Light rain", "🌤️  Clouds clearing"])

@@ -18,6 +18,7 @@ from enum import Enum
 
 import config
 from logger import log
+from strategies import DecisionStrategy
 
 
 # ── Visitor State Machine ─────────────────────────────────────────────
@@ -55,7 +56,8 @@ class Visitor(threading.Thread):
         5. Default           → score every attraction, pick the best
     """
 
-    def __init__(self, visitor_id: int, park, clock, delay_minutes: float = 0):
+    def __init__(self, visitor_id: int, park, clock, delay_minutes: float = 0,
+                 strategy: DecisionStrategy = None):
         super().__init__(daemon=True, name=f"Visitor-{visitor_id:02d}")
 
         self.visitor_id = visitor_id
@@ -63,6 +65,7 @@ class Visitor(threading.Thread):
         self.park       = park
         self.clock      = clock
         self.delay      = delay_minutes   # arrival delay in sim-minutes
+        self.strategy   = strategy
 
         # ── Visitor attributes (initial values randomised) ────────────
         self.energy  = random.uniform(85, 100)   # 0-100
@@ -70,6 +73,9 @@ class Visitor(threading.Thread):
         self.bladder = random.uniform(0, 15)     # 0-100
         self.money   = random.uniform(40, 180)   # euros
         self.gender  = random.choice(["M", "F"])
+
+        # ~20 % of visitors carry a FastPass ticket
+        self.ticket_type = "fastpass" if random.random() < 0.20 else "standard"
 
         # Which attraction types this visitor enjoys
         all_types        = ["thrill", "family", "show", "kids"]
@@ -171,92 +177,10 @@ class Visitor(threading.Thread):
         return False
 
     # ------------------------------------------------------------------
-    # Decision engine  ← this is the core of the redesign
+    # Decision engine — delegated entirely to the assigned strategy
     # ------------------------------------------------------------------
     def _decide(self) -> tuple:
-        """
-        Returns a (type, target) tuple describing what to do next.
-        Priority-based: urgent biological needs trump everything.
-        """
-
-        # Priority 1 — restroom
-        if self.bladder >= config.BLADDER_RESTROOM_THRESHOLD:
-            restroom = self.park.nearest_restroom()
-            if restroom:
-                return ("restroom", restroom)
-
-        # Priority 2 — food
-        if self.hunger >= config.HUNGER_EAT_THRESHOLD:
-            restaurant = self.park.best_restaurant()
-            if restaurant:
-                return ("eat", restaurant)
-
-        # Priority 3 — rest (too tired for rides)
-        if self.energy <= config.ENERGY_REST_THRESHOLD:
-            return ("rest", None)
-
-        # Priority 4 — park closing soon → only short queues
-        if self.clock.is_closing_soon:
-            short = [
-                a for a in self.park.attractions
-                if a.is_operational and a.estimated_wait() <= 10
-            ]
-            if short:
-                return ("ride", random.choice(short))
-            return ("rest", None)
-
-        # Priority 5 — score every attraction, pick the best
-        candidates = [
-            (a, self._score(a))
-            for a in self.park.attractions
-            if a.is_operational
-        ]
-        if not candidates:
-            return ("rest", None)
-
-        candidates.sort(key=lambda x: x[1], reverse=True)
-        best, best_score = candidates[0]
-
-        if best_score < 0:
-            return ("rest", None)
-
-        return ("ride", best)
-
-    # ------------------------------------------------------------------
-    # Scoring function
-    # ------------------------------------------------------------------
-    def _score(self, attraction) -> float:
-        """
-        Higher score = more desirable.
-        Factors:
-          - Preference match   → +25
-          - Thrill level match → +up to +15
-          - Queue length       → penalty proportional to wait time
-          - Already visited    → -20 per previous visit (still goes again!)
-          - Full queue         → -999 (won't join)
-        """
-        if attraction.queue_length >= config.MAX_QUEUE_LENGTH:
-            return -999
-
-        score = 50.0
-
-        # Preference bonus
-        if attraction.type in self.preferences:
-            score += 25
-
-        # Thrill matching
-        if "thrill" in self.preferences:
-            score += attraction.thrill_level * 3
-
-        # Queue wait penalty
-        wait = attraction.estimated_wait()
-        score -= wait * 0.9
-
-        # Repeat visits are less exciting but not impossible
-        times_visited = self.visited.get(attraction.name, 0)
-        score -= times_visited * 20
-
-        return score
+        return self.strategy.decide(self, self.park, self.clock)
 
     # ------------------------------------------------------------------
     # Action execution
