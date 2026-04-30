@@ -15,7 +15,7 @@ CLOSING_WARN_MIN = 60  # "closing soon" threshold (sim minutes before close)
 
 # --- Visitors ---
 NUM_VISITORS         = 40
-ARRIVAL_WINDOW_MIN   = 90   # visitors trickle in over this many sim-minutes
+ARRIVAL_WINDOW_MIN   = 15   # visitors trickle in over this many sim-minutes
 
 # --- Need thresholds (scale 0-100) ---
 HUNGER_EAT_THRESHOLD      = 70

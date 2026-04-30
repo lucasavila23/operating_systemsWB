@@ -44,9 +44,9 @@ class Park:
     def _build_attractions(self):
         c = self.clock
         return [
-            FastPassAttraction(Attraction("Batman La Fuga",         "thrill",  4,  5, c, thrill_level=5)),
-            FastPassAttraction(Attraction("Superman: La Atracción", "thrill",  6,  4, c, thrill_level=4)),
-            Attraction("Stunt Falls",              "thrill",  8,  6, c, thrill_level=4),
+            FastPassAttraction(Attraction("Batman La Fuga",         "thrill",  2,  5, c, thrill_level=5)),
+            FastPassAttraction(Attraction("Superman: La Atracción", "thrill",  3,  4, c, thrill_level=4)),
+            Attraction("Stunt Falls",              "thrill",  4,  6, c, thrill_level=4),
             Attraction("Tom y Jerry: La Fuga",     "family", 12,  4, c, thrill_level=2),
             Attraction("Scooby-Doo Mansion",       "family",  8,  5, c, thrill_level=2),
             Attraction("Aqua Mania",               "family", 10,  7, c, thrill_level=3),
@@ -82,7 +82,9 @@ class Park:
         return random.choice(self.restrooms)
 
     def best_restaurant(self) -> Restaurant:
-        return min(self.restaurants, key=lambda r: r.waiting_count)
+        min_wait = min(r.waiting_count for r in self.restaurants)
+        candidates = [r for r in self.restaurants if r.waiting_count == min_wait]
+        return random.choice(candidates)
 
     # ------------------------------------------------------------------
     # Visitor tracking
